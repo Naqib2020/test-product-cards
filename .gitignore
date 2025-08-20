@@ -4,6 +4,8 @@
 .pub-cache/
 .pub/
 build/
+# ...but DO NOT ignore the web build output.
+!build/web/
 .flutter-plugins
 .flutter-plugins-dependencies
 .pubspec.lock
