@@ -1,6 +1,48 @@
-build/
-.android/
-.ios/
-.idea/
+# Flutter/Dart related
+.dart_tool/
 .packages
-*.lock
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pubspec.lock
+
+# Android
+/android/.gradle/
+/android/app/build/
+/android/local.properties
+/android/.idea/
+/android/**/*.iml
+/android/.cxx/
+
+# iOS
+/ios/Flutter/Flutter.framework/
+/ios/Flutter/Flutter.podspec
+/ios/Pods/
+/ios/Runner.xcworkspace/
+/ios/.symlinks/
+/ios/Flutter/Generated.xcconfig
+/ios/Flutter/App.framework
+/ios/Flutter/FlutterPluginRegistrant/
+
+# VS Code / IDEs
+.idea/
+.vscode/
+*.iml
+*.log
+
+# Web build (Flutter Web output) — optional if you build locally
+# /build/web/
+
+# Other binaries
+*.apk
+*.ipa
+*.keystore
+*.jks
+*.so
+*.a
+
+# Mac / Windows temp files
+.DS_Store
+Thumbs.db
