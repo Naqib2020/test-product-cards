@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$">
+      <excludeFolder url="file://$MODULE_DIR$/CityPopUp/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/CityPopUp/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/CityPopUp/build" />
+      <excludeFolder url="file://$MODULE_DIR$/CityPopUpCustom/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/CityPopUpCustom/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/CityPopUpCustom/build" />
+      <excludeFolder url="file://$MODULE_DIR$/LogoTrading-Flutter-main/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/LogoTrading-Flutter-main/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/LogoTrading-Flutter-main/build" />
+      <excludeFolder url="file://$MODULE_DIR$/testproductCard/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/testproductCard/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/testproductCard/build" />
+      <excludeFolder url="file://$MODULE_DIR$/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/build" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="Dart SDK" level="project" />
+    <orderEntry type="library" name="Dart Packages" level="project" />
+  </component>
+</module>

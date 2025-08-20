@@ -1,6 +1,11 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'dart:math' as math;
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+// The typedef must be a top-level declaration, not inside a class.
+typedef ProductCardBuilder = Widget Function(Product product);
 
 // Main entry point for the Flutter application
 void main() {
@@ -31,112 +36,114 @@ class ProductShowcaseApp extends StatelessWidget {
   }
 }
 
-// Data model for a product
+// ====================================================================
+// Data Model & Service for API fetching
+// ====================================================================
+
+// Data model to match the API response
 class Product {
   final String name;
   final String imageUrl;
   final double price;
-  final double? originalPrice;
+  final double originalPrice;
   final String category;
-  final double? rating;
-  final bool isNew;
 
   Product({
     required this.name,
     required this.imageUrl,
     required this.price,
-    this.originalPrice,
+    required this.originalPrice,
     required this.category,
-    this.rating,
-    this.isNew = false,
   });
 
-  // Helper to calculate discount percentage
   double? get discountPercentage {
-    if (originalPrice != null && originalPrice! > 0) {
-      return (1 - price / originalPrice!) * 100;
+    if (originalPrice > 0) {
+      return (1 - price / originalPrice) * 100;
     }
     return null;
   }
+
+  factory Product.fromJson(Map<String, dynamic> json) {
+    // Helper to safely parse string prices to double
+    double safeParse(String? value) {
+      return double.tryParse(value ?? '0.0') ?? 0.0;
+    }
+
+    // Handle the '##' separated image string
+    String firstImage = 'https://picsum.photos/400'; // Fallback image
+    String imageString = json['product_images'] ?? '';
+    if (imageString.isNotEmpty) {
+      firstImage = imageString.split('##').first;
+    }
+
+    return Product(
+      name: json['product_name'] ?? 'No Name',
+      imageUrl: firstImage,
+      price: safeParse(json['retail_price']),
+      originalPrice: safeParse(json['unit_cost']),
+      category: json['gl_desc']?.replaceAll('gl_', '') ?? 'General',
+    );
+  }
 }
 
-// The main page that displays the grid of product cards
-class ProductShowcasePage extends StatelessWidget {
+// Service to fetch products from the API
+class ProductService {
+  static const String apiUrl = 'https://scanprox.de/scanprox/api/client/342/products_list';
+
+  Future<List<Product>> fetchProducts({int limit = 8}) async {
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          "shop_id": 38,
+          "limit": limit,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List<dynamic> productList = data['data']['data'];
+        return productList.map((json) => Product.fromJson(json)).toList();
+      } else {
+        throw Exception('Failed to load products: Status code ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('API fetch failed: $e. Using dummy data.');
+      return List.generate(limit, (index) => Product(
+          name: "Sample Product ${index + 1}",
+          imageUrl: "https://picsum.photos/seed/${index + 1}/400/400",
+          price: (50 + index * 10).toDouble(),
+          originalPrice: (80 + index * 10).toDouble(),
+          category: "Sample Category"
+      ));
+    }
+  }
+}
+
+// ====================================================================
+// Home Page - Product Showcase
+// ====================================================================
+
+class ProductShowcasePage extends StatefulWidget {
   const ProductShowcasePage({super.key});
 
-  // Updated sample data with new, reliable image URLs
-  static final List<Product> _sampleProducts = [
-    Product(
-        name: "Urban Explorer Sneakers",
-        imageUrl: "https://picsum.photos/seed/sneakers/400/400",
-        price: 89.99,
-        originalPrice: 120.00,
-        category: "Footwear",
-        rating: 4.8),
-    Product(
-        name: "Galaxy Smartwatch Pro",
-        imageUrl: "https://picsum.photos/seed/watch/400/400",
-        price: 299.50,
-        originalPrice: 399.99,
-        category: "Electronics",
-        rating: 4.9,
-        isNew: true),
-    Product(
-        name: "Executive Leather Briefcase",
-        imageUrl: "https://picsum.photos/seed/briefcase/400/400",
-        price: 180.00,
-        originalPrice: 250.00,
-        category: "Accessories",
-        rating: 4.7),
-    Product(
-        name: "Aurora Table Lamp",
-        imageUrl: "https://picsum.photos/seed/lamp/400/400",
-        price: 65.75,
-        category: "Home & Living",
-        rating: 4.5,
-        isNew: true),
-    Product(
-        name: "Titanium Aviators",
-        imageUrl: "https://picsum.photos/seed/sunglasses/400/400",
-        price: 195.00,
-        originalPrice: 280.00,
-        category: "Eyewear",
-        rating: 4.6),
-    Product(
-        name: "Cinema Pro Camera",
-        imageUrl: "https://picsum.photos/seed/camera/400/400",
-        price: 1299.99,
-        originalPrice: 1599.00,
-        category: "Photography",
-        rating: 4.9),
-    Product(
-        name: "Mountain Peak Coffee",
-        imageUrl: "https://picsum.photos/seed/coffee/400/400",
-        price: 28.50,
-        category: "Gourmet",
-        rating: 4.4),
-    Product(
-        name: "Nomad Adventure Pack",
-        imageUrl: "https://picsum.photos/seed/backpack/400/400",
-        price: 125.00,
-        originalPrice: 175.00,
-        category: "Travel",
-        rating: 4.8),
-  ];
+  @override
+  State<ProductShowcasePage> createState() => _ProductShowcasePageState();
+}
+
+class _ProductShowcasePageState extends State<ProductShowcasePage> {
+  late Future<List<Product>> _productsFuture;
+  final ProductService _productService = ProductService();
+
+  @override
+  void initState() {
+    super.initState();
+    _productsFuture = _productService.fetchProducts(limit: 8);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> cards = [
-      ProductCardFinal(product: _sampleProducts[0]),
-      ProductCardNeon(product: _sampleProducts[1]),
-      ProductCardDiagonal(product: _sampleProducts[2]),
-      ProductCardCircular(product: _sampleProducts[3]),
-      ProductCardMorphic(product: _sampleProducts[4]),
-      ProductCardHolographic(product: _sampleProducts[5]),
-      ProductCardVintage(product: _sampleProducts[6]),
-      ProductCardFuturistic(product: _sampleProducts[7]),
-    ];
-
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -147,6 +154,92 @@ class ProductShowcasePage extends StatelessWidget {
         elevation: 4,
         shadowColor: Colors.black.withOpacity(0.2),
       ),
+      body: FutureBuilder<List<Product>>(
+        future: _productsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text('No products found.'));
+          }
+
+          final products = snapshot.data!;
+
+          final List<ProductCardBuilder> cardBuilders = [
+                (p) => ProductCardFinal(product: p),
+                (p) => ProductCardNeon(product: p),
+                (p) => ProductCardDiagonal(product: p),
+                (p) => ProductCardInspired(product: p),
+                (p) => ProductCardMorphic(product: p),
+                (p) => ProductCardHolographic(product: p),
+                (p) => ProductCardVintage(product: p),
+                (p) => ProductCardFuturistic(product: p),
+          ];
+
+          return GridView.builder(
+            padding: const EdgeInsets.all(16.0),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16.0,
+              mainAxisSpacing: 16.0,
+              childAspectRatio: 0.68,
+            ),
+            itemCount: cardBuilders.length,
+            itemBuilder: (context, index) {
+              final product = products[index];
+              final cardBuilder = cardBuilders[index];
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CardDetailPage(
+                        cardBuilder: cardBuilder,
+                        products: products,
+                        cardName: cardBuilder(product).runtimeType.toString(),
+                      ),
+                    ),
+                  );
+                },
+                child: cardBuilder(product),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ====================================================================
+// Card Detail Page
+// ====================================================================
+class CardDetailPage extends StatelessWidget {
+  final Widget Function(Product product) cardBuilder;
+  final List<Product> products;
+  final String cardName;
+
+  const CardDetailPage({
+    super.key,
+    required this.cardBuilder,
+    required this.products,
+    required this.cardName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          cardName.replaceAll('ProductCard', ''),
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+        ),
+        backgroundColor: Theme.of(context).primaryColor,
+      ),
       body: GridView.builder(
         padding: const EdgeInsets.all(16.0),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -155,14 +248,15 @@ class ProductShowcasePage extends StatelessWidget {
           mainAxisSpacing: 16.0,
           childAspectRatio: 0.68,
         ),
-        itemCount: cards.length,
+        itemCount: products.length,
         itemBuilder: (context, index) {
-          return cards[index];
+          return cardBuilder(products[index]);
         },
       ),
     );
   }
 }
+
 
 // ====================================================================
 // Reusable Price Widget for consistency
@@ -185,9 +279,9 @@ class PriceWidget extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (product.originalPrice != null)
+        if (product.originalPrice > 0)
           Text(
-            '€${product.originalPrice!.toStringAsFixed(2)}',
+            '€${product.originalPrice.toStringAsFixed(2)}',
             style: TextStyle(
               color: originalPriceColor,
               decoration: TextDecoration.lineThrough,
@@ -208,7 +302,7 @@ class PriceWidget extends StatelessWidget {
 }
 
 // ====================================================================
-// DESIGN 1: The Final Creative Card (Original - Unchanged)
+// DESIGN 1: The Final Creative Card
 // ====================================================================
 class ProductCardFinal extends StatelessWidget {
   final Product product;
@@ -337,10 +431,12 @@ class ProductCardFinal extends StatelessWidget {
               color: Colors.white,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.add,
-              color: Colors.black,
-              size: 20,
+            child: const Center(
+              child: Icon(
+                Icons.add,
+                color: Colors.black,
+                size: 20,
+              ),
             ),
           ),
         ],
@@ -348,6 +444,7 @@ class ProductCardFinal extends StatelessWidget {
     );
   }
 }
+
 
 // ====================================================================
 // DESIGN 2: Neon Glow Card
@@ -433,33 +530,6 @@ class _ProductCardNeonState extends State<ProductCardNeon>
             color: Colors.white.withOpacity(0.9),
             colorBlendMode: BlendMode.overlay,
           ),
-          if (widget.product.isNew)
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(context).primaryColor.withOpacity(0.4),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                child: const Text(
-                  'NEW',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 10,
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -490,18 +560,6 @@ class _ProductCardNeonState extends State<ProductCardNeon>
                 ],
               ),
             ),
-            const SizedBox(height: 4),
-            if (widget.product.rating != null)
-              Row(
-                children: [
-                  Icon(Icons.star, color: Theme.of(context).primaryColor, size: 14),
-                  const SizedBox(width: 4),
-                  Text(
-                    widget.product.rating!.toString(),
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                ],
-              ),
             const Spacer(),
             PriceWidget(
               product: widget.product,
@@ -630,121 +688,144 @@ class DiagonalClipper extends CustomClipper<Path> {
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
 
+
 // ====================================================================
-// DESIGN 4: Circular Image Card
+// DESIGN 4: Inspired by your screenshot
 // ====================================================================
-class ProductCardCircular extends StatelessWidget {
+class ProductCardInspired extends StatelessWidget {
   final Product product;
-  const ProductCardCircular({super.key, required this.product});
+  const ProductCardInspired({super.key, required this.product});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).primaryColor.withOpacity(0.1),
-            blurRadius: 20,
-            spreadRadius: 2,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildProductImage(context),
+          Expanded(
+            child: _buildProductInformation(context),
           ),
         ],
       ),
-      child: Column(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        Theme.of(context).primaryColor.withOpacity(0.1),
-                        Theme.of(context).primaryColor.withOpacity(0.3),
-                      ],
-                    ),
-                  ),
-                ),
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    image: DecorationImage(
-                      image: NetworkImage(product.imageUrl),
-                      fit: BoxFit.cover,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                ),
-                if (product.isNew)
-                  Positioned(
-                    top: 0,
-                    right: 20,
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.fiber_new,
-                        color: Colors.black,
-                        size: 12,
-                      ),
-                    ),
-                  ),
-              ],
+    );
+  }
+
+  Widget _buildProductImage(BuildContext context) {
+    return Stack(
+      children: [
+        SizedBox(
+          height: 150,
+          width: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Image.network(
+              product.imageUrl,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) =>
+              const Icon(Icons.error, color: Colors.red),
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: Column(
-              children: [
-                Text(
-                  product.name,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+        ),
+        if (product.discountPercentage != null)
+          Positioned(
+            top: 8,
+            left: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '-${product.discountPercentage!.toStringAsFixed(0)}%',
+                style: const TextStyle(
+                    color: Colors.black,
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 11),
+              ),
+            ),
+          ),
+        Positioned(
+          top: 4,
+          right: 4,
+          child: IconButton(
+            onPressed: () {},
+            icon: Icon(
+              Icons.favorite_border,
+              color: Colors.grey[600],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProductInformation(BuildContext context) {
+    final priceString = product.price.toStringAsFixed(2);
+    final parts = priceString.split('.');
+    final mainPart = parts[0];
+    final centsPart = parts.length > 1 ? parts[1] : '00';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0).copyWith(bottom: 12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            product.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            product.category,
+            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+          ),
+          const Spacer(),
+          if (product.originalPrice != null)
+            Text(
+              '€${product.originalPrice!.toStringAsFixed(2)}',
+              style: TextStyle(
+                color: Colors.grey[500],
+                decoration: TextDecoration.lineThrough,
+                fontSize: 13,
+              ),
+            ),
+          RichText(
+            text: TextSpan(
+              style: TextStyle(
+                color: Theme.of(context).primaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+              children: [
+                TextSpan(
+                  text: mainPart,
+                  style: const TextStyle(fontSize: 20),
+                ),
+                TextSpan(
+                  text: '.',
+                  style: const TextStyle(fontSize: 20),
+                ),
+                TextSpan(
+                  text: centsPart,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontFeatures: [FontFeature.subscripts()],
                   ),
                 ),
-                const SizedBox(height: 8),
-                if (product.rating != null)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(5, (index) {
-                      return Icon(
-                        index < product.rating!.floor()
-                            ? Icons.star
-                            : Icons.star_border,
-                        color: Theme.of(context).primaryColor,
-                        size: 16,
-                      );
-                    }),
+                const TextSpan(
+                  text: ' €',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontFeatures: [FontFeature.superscripts()],
                   ),
-                const Spacer(),
-                PriceWidget(
-                  product: product,
-                  mainPriceColor: Colors.black,
-                  originalPriceColor: Colors.grey,
-                  mainPriceSize: 16,
                 ),
               ],
             ),
@@ -754,6 +835,7 @@ class ProductCardCircular extends StatelessWidget {
     );
   }
 }
+
 
 // ====================================================================
 // DESIGN 5: Morphic/Neumorphic Card
@@ -1018,7 +1100,7 @@ class _ProductCardHolographicState extends State<ProductCardHolographic>
 }
 
 // ====================================================================
-// DESIGN 7: Vintage Paper Card
+// DESIGN 7: Vintage Paper Card (REDESIGNED)
 // ====================================================================
 class ProductCardVintage extends StatelessWidget {
   final Product product;
@@ -1027,94 +1109,138 @@ class ProductCardVintage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Transform.rotate(
-      angle: -0.02,
+      angle: -0.01,
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF8E1),
-          borderRadius: BorderRadius.circular(8),
+          color: const Color(0xFFF8F4E6),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.brown.withOpacity(0.2),
-              blurRadius: 8,
-              offset: const Offset(3, 3),
+              color: Colors.brown.withOpacity(0.15),
+              blurRadius: 12,
+              offset: const Offset(2, 4),
             ),
           ],
           border: Border.all(
-            color: Colors.brown.withOpacity(0.3),
-            width: 1,
+            color: Colors.brown.withOpacity(0.2),
+            width: 1.5,
           ),
         ),
-        child: Column(
-          children: [
-            Expanded(
-              flex: 3,
-              child: Container(
-                margin: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Colors.brown.withOpacity(0.4),
-                    width: 2,
-                  ),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: Image.network(
-                    product.imageUrl,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    color: Colors.brown.withOpacity(0.1),
-                    colorBlendMode: BlendMode.overlay,
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12).copyWith(bottom: 12),
-                child: Column(
-                  children: [
-                    Text(
-                      product.name,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Colors.brown[800],
-                        fontFamily: 'serif',
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image Section
+                SizedBox(
+                  height: constraints.maxHeight * 0.55,
+                  child: Container(
+                    margin: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Colors.brown.withOpacity(0.3),
+                        width: 1.5,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withOpacity(0.8),
-                        borderRadius: BorderRadius.circular(4),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4.5),
+                      child: Image.network(
+                        product.imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        color: Colors.brown.withOpacity(0.05),
+                        colorBlendMode: BlendMode.overlay,
                       ),
-                      child: Text(
-                        product.category,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                    ),
+                  ),
+                ),
+                // Content Section
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Product Name
+                        Text(
+                          product.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                            color: Colors.brown[800],
+                            height: 1.1,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 2),
+                        // Category Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.brown.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                          child: Text(
+                            'home',
+                            style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.brown[700],
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        // Price Section
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '€14.02',
+                                  style: TextStyle(
+                                    color: Colors.brown[500],
+                                    decoration: TextDecoration.lineThrough,
+                                    fontSize: 9,
+                                  ),
+                                ),
+                                Text(
+                                  '€4.00',
+                                  style: TextStyle(
+                                    color: Colors.brown[800],
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).primaryColor,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.add,
+                                color: Colors.black,
+                                size: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    const Spacer(),
-                    PriceWidget(
-                      product: product,
-                      mainPriceColor: Colors.brown[800]!,
-                      originalPriceColor: Colors.brown[600]!,
-                      mainPriceSize: 16,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
     );
@@ -1122,7 +1248,7 @@ class ProductCardVintage extends StatelessWidget {
 }
 
 // ====================================================================
-// DESIGN 8: Futuristic Card
+// DESIGN 8: Futuristic Card (REDESIGNED)
 // ====================================================================
 class ProductCardFuturistic extends StatefulWidget {
   final Product product;
@@ -1133,121 +1259,200 @@ class ProductCardFuturistic extends StatefulWidget {
 }
 
 class _ProductCardFuturisticState extends State<ProductCardFuturistic>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _pulseController;
+  late AnimationController _borderController;
   late Animation<double> _pulseAnimation;
+  late Animation<double> _borderAnimation;
 
   @override
   void initState() {
     super.initState();
     _pulseController = AnimationController(
-      duration: const Duration(seconds: 4),
+      duration: const Duration(seconds: 3),
       vsync: this,
     )..repeat(reverse: true);
+
+    _borderController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat();
+
     _pulseAnimation = Tween<double>(begin: 0.98, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    _borderAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _borderController, curve: Curves.linear),
     );
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
+    _borderController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _pulseAnimation,
+      animation: Listenable.merge([_pulseAnimation, _borderAnimation]),
       builder: (context, child) {
         return Transform.scale(
           scale: _pulseAnimation.value,
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(16),
               gradient: const LinearGradient(
-                colors: [ Color(0xFF0A0A0A), Color(0xFF1A1A1A), Color(0xFF2A2A2A) ],
+                colors: [
+                  Color(0xFF0D0D0D),
+                  Color(0xFF1A1A1A),
+                  Color(0xFF0D0D0D),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              border: Border.all(
-                color: Theme.of(context).primaryColor.withOpacity(0.5),
-                width: 1,
-              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).primaryColor.withOpacity(0.2),
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: GridPainter(
-                        color: Theme.of(context).primaryColor.withOpacity(0.1),
-                      ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Container(
+                  margin: const EdgeInsets.all(1),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(15),
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFF111111),
+                        Color(0xFF1F1F1F),
+                        Color(0xFF111111),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        Expanded(
-                          flex: 3,
+                  child: Column(
+                    children: [
+                      // Image Section
+                      SizedBox(
+                        height: constraints.maxHeight * 0.55,
+                        child: Container(
+                          margin: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Theme.of(context).primaryColor.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.network( widget.product.imageUrl, fit: BoxFit.cover ),
+                            borderRadius: BorderRadius.circular(7),
+                            child: Image.network(
+                              widget.product.imageUrl,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        // ▼▼▼ FIX ▼▼▼
-                        // Wrapped the Column in an Expanded widget to resolve the overflow error.
-                        Expanded(
-                          flex: 2,
+                      ),
+                      // Info Section
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                           child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
+                              // Product name
                               Text(
                                 widget.product.name,
-                                textAlign: TextAlign.center,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: Theme.of(context).primaryColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 10,
+                                  height: 1.1,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              // Category chip
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                                child: Text(
+                                  'HOME',
+                                  style: TextStyle(
+                                    color: Theme.of(context).primaryColor,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                               const Spacer(),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Theme.of(context).primaryColor,
-                                      Color.lerp(Theme.of(context).primaryColor, Colors.orange, 0.5)!
+                              // Price and action button
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '€11.74',
+                                        style: const TextStyle(
+                                          color: Colors.white38,
+                                          decoration: TextDecoration.lineThrough,
+                                          fontSize: 9,
+                                        ),
+                                      ),
+                                      Text(
+                                        '€5.00',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Theme.of(context).primaryColor.withOpacity(0.4),
-                                      blurRadius: 8,
+                                  Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Theme.of(context).primaryColor,
+                                          Theme.of(context).primaryColor.withOpacity(0.8),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
                                     ),
-                                  ],
-                                ),
-                                child: PriceWidget(
-                                  product: widget.product,
-                                  mainPriceColor: Colors.black,
-                                  originalPriceColor: Colors.black54,
-                                  mainPriceSize: 16,
-                                ),
+                                    child: const Icon(
+                                      Icons.shopping_cart_outlined,
+                                      color: Colors.black,
+                                      size: 12,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
           ),
         );
@@ -1256,6 +1461,40 @@ class _ProductCardFuturisticState extends State<ProductCardFuturistic>
   }
 }
 
+// Custom painter for futuristic grid effect
+class FuturisticGridPainter extends CustomPainter {
+  final Color color;
+  final double animation;
+
+  FuturisticGridPainter({required this.color, required this.animation});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 0.3;
+
+    const spacing = 15.0;
+    final animatedOpacity = (0.3 + (animation * 0.4));
+
+    // Vertical lines
+    for (double x = 0; x <= size.width; x += spacing) {
+      paint.color = color.withOpacity(animatedOpacity * ((x / size.width).abs()));
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+
+    // Horizontal lines
+    for (double y = 0; y <= size.height; y += spacing) {
+      paint.color = color.withOpacity(animatedOpacity * ((y / size.height).abs()));
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
+}
+
+// Legacy GridPainter for backward compatibility
 class GridPainter extends CustomPainter {
   final Color color;
   GridPainter({required this.color});
