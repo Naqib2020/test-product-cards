@@ -186,7 +186,6 @@ class _ProductShowcasePageState extends State<ProductShowcasePage> {
               crossAxisCount: 2,
               crossAxisSpacing: 16.0,
               mainAxisSpacing: 16.0,
-              // MODIFIED: Reverted to a taller aspect ratio for the other cards.
               childAspectRatio: 0.68,
             ),
             itemCount: cardBuilders.length,
@@ -194,18 +193,6 @@ class _ProductShowcasePageState extends State<ProductShowcasePage> {
               final product = products[index];
               final cardBuilder = cardBuilders[index];
               final card = cardBuilder(product);
-
-              // MODIFIED: This logic makes ProductCardFinal have its own compact height,
-              // while other cards fill the full grid cell height.
-              final Widget finalCard;
-              if (card is ProductCardFinal) {
-                finalCard = Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [card],
-                );
-              } else {
-                finalCard = card;
-              }
 
               return GestureDetector(
                 onTap: () {
@@ -220,7 +207,7 @@ class _ProductShowcasePageState extends State<ProductShowcasePage> {
                     ),
                   );
                 },
-                child: finalCard,
+                child: card,
               );
             },
           );
@@ -261,22 +248,11 @@ class CardDetailPage extends StatelessWidget {
           crossAxisCount: 2,
           crossAxisSpacing: 16.0,
           mainAxisSpacing: 16.0,
-          // MODIFIED: Reverted to a taller aspect ratio for the other cards.
           childAspectRatio: 0.68,
         ),
         itemCount: products.length,
         itemBuilder: (context, index) {
-          final card = cardBuilder(products[index]);
-
-          // MODIFIED: Apply the same logic here to make the special card shorter.
-          if (card is ProductCardFinal) {
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [card],
-            );
-          }
-
-          return card;
+          return cardBuilder(products[index]);
         },
       ),
     );
@@ -304,8 +280,9 @@ class PriceWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        if (product.originalPrice > 0)
+        if (product.originalPrice > 0 && product.originalPrice > product.price)
           Text(
             '€${product.originalPrice.toStringAsFixed(2)}',
             style: TextStyle(
@@ -328,7 +305,7 @@ class PriceWidget extends StatelessWidget {
 }
 
 // ====================================================================
-// DESIGN 1: The Final Creative Card
+// DESIGN 1: The Final Creative Card (REDESIGNED)
 // ====================================================================
 class ProductCardFinal extends StatelessWidget {
   final Product product;
@@ -339,10 +316,10 @@ class ProductCardFinal extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12.0),
-        color: Colors.white,
+        color: Colors.grey[200], // Fallback color
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.07),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -350,127 +327,146 @@ class ProductCardFinal extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12.0),
-        child: Column(
-          // This ensures the card shrinks to its content's height
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            _buildProductImage(context),
-            _buildProductInformation(context),
+            _buildProductImage(),
+            _buildGradientOverlay(),
+            _buildDiscountBadge(context),
+            _buildFavoriteIcon(),
+            _buildInfoOverlay(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProductImage(BuildContext context) {
-    return Stack(
-      children: [
-        SizedBox(
-          height: 140,
-          width: double.infinity,
-          child: Image.network(
-            product.imageUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) =>
-            const Icon(Icons.error, color: Colors.red),
-          ),
-        ),
-        if (product.discountPercentage != null)
-          Positioned(
-            top: 8,
-            left: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                '-${product.discountPercentage!.toStringAsFixed(0)}%',
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
-                ),
-              ),
-            ),
-          ),
-        Positioned(
-          top: 4,
-          right: 4,
-          child: IconButton(
-            onPressed: () {},
-            icon: Icon(
-              Icons.favorite_border,
-              color: Colors.grey[800],
-            ),
-          ),
-        ),
-      ],
+  Widget _buildProductImage() {
+    return Image.network(
+      product.imageUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) =>
+      const Icon(Icons.error, color: Colors.red),
     );
   }
 
-  Widget _buildProductInformation(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10).copyWith(top: 8),
-          child: Text(
-            product.name,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+  Widget _buildGradientOverlay() {
+    // MODIFIED: Using a dark, warm gold derived from the brand color for a premium feel.
+    const darkBrandColor = Color(0xFF665200);
+
+    return Positioned.fill(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.transparent,
+              darkBrandColor.withOpacity(0.6),
+              darkBrandColor.withOpacity(0.85),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: const [0.4, 0.7, 1.0],
           ),
         ),
-        const SizedBox(height: 8),
-        _buildPriceFooter(context),
-      ],
-    );
-  }
-
-  Widget _buildPriceFooter(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).primaryColor,
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Flexible(
-            child: PriceWidget(
-              product: product,
-              mainPriceColor: Colors.red[700]!, // Corrected for readability
-              originalPriceColor: Colors.red[900]!,
-              mainPriceSize: 20,
-            ),
+    );
+  }
+
+  Widget _buildDiscountBadge(BuildContext context) {
+    if (product.discountPercentage == null || product.discountPercentage! <= 0) {
+      return const SizedBox.shrink();
+    }
+    return Positioned(
+      top: 8,
+      left: 8,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Theme.of(context).primaryColor,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          '-${product.discountPercentage!.toStringAsFixed(0)}%',
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 11,
           ),
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.add,
-                color: Colors.black,
-                size: 20,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFavoriteIcon() {
+    return Positioned(
+      top: 4,
+      right: 4,
+      child: IconButton(
+        onPressed: () {},
+        icon: const Icon(
+          Icons.favorite_border,
+          color: Colors.white,
+          shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoOverlay(BuildContext context) {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              product.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14, // Reduced font size
+                shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                PriceWidget(
+                  product: product,
+                  mainPriceColor: Theme.of(context).primaryColor,
+                  originalPriceColor: Colors.white70,
+                  mainPriceSize: 20,
+                ),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.add,
+                      color: Colors.black,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
-
 
 // ====================================================================
 // DESIGN 2: Neon Glow Card
