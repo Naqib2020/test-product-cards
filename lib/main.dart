@@ -186,12 +186,27 @@ class _ProductShowcasePageState extends State<ProductShowcasePage> {
               crossAxisCount: 2,
               crossAxisSpacing: 16.0,
               mainAxisSpacing: 16.0,
+              // MODIFIED: Reverted to a taller aspect ratio for the other cards.
               childAspectRatio: 0.68,
             ),
             itemCount: cardBuilders.length,
             itemBuilder: (context, index) {
               final product = products[index];
               final cardBuilder = cardBuilders[index];
+              final card = cardBuilder(product);
+
+              // MODIFIED: This logic makes ProductCardFinal have its own compact height,
+              // while other cards fill the full grid cell height.
+              final Widget finalCard;
+              if (card is ProductCardFinal) {
+                finalCard = Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [card],
+                );
+              } else {
+                finalCard = card;
+              }
+
               return GestureDetector(
                 onTap: () {
                   Navigator.push(
@@ -200,12 +215,12 @@ class _ProductShowcasePageState extends State<ProductShowcasePage> {
                       builder: (context) => CardDetailPage(
                         cardBuilder: cardBuilder,
                         products: products,
-                        cardName: cardBuilder(product).runtimeType.toString(),
+                        cardName: card.runtimeType.toString(),
                       ),
                     ),
                   );
                 },
-                child: cardBuilder(product),
+                child: finalCard,
               );
             },
           );
@@ -246,11 +261,22 @@ class CardDetailPage extends StatelessWidget {
           crossAxisCount: 2,
           crossAxisSpacing: 16.0,
           mainAxisSpacing: 16.0,
+          // MODIFIED: Reverted to a taller aspect ratio for the other cards.
           childAspectRatio: 0.68,
         ),
         itemCount: products.length,
         itemBuilder: (context, index) {
-          return cardBuilder(products[index]);
+          final card = cardBuilder(products[index]);
+
+          // MODIFIED: Apply the same logic here to make the special card shorter.
+          if (card is ProductCardFinal) {
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [card],
+            );
+          }
+
+          return card;
         },
       ),
     );
@@ -325,12 +351,12 @@ class ProductCardFinal extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12.0),
         child: Column(
+          // This ensures the card shrinks to its content's height
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildProductImage(context),
-            Expanded(
-              child: _buildProductInformation(context),
-            ),
+            _buildProductInformation(context),
           ],
         ),
       ),
@@ -388,7 +414,7 @@ class ProductCardFinal extends StatelessWidget {
   Widget _buildProductInformation(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10).copyWith(top: 8),
@@ -402,7 +428,7 @@ class ProductCardFinal extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        const Spacer(),
+        const SizedBox(height: 8),
         _buildPriceFooter(context),
       ],
     );
@@ -420,8 +446,8 @@ class ProductCardFinal extends StatelessWidget {
           Flexible(
             child: PriceWidget(
               product: product,
-              mainPriceColor: Colors.black,
-              originalPriceColor: Colors.black.withOpacity(0.7),
+              mainPriceColor: Colors.red[700]!, // Corrected for readability
+              originalPriceColor: Colors.red[900]!,
               mainPriceSize: 20,
             ),
           ),
