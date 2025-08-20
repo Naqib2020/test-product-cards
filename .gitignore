@@ -1,0 +1,6 @@
+build/
+.android/
+.ios/
+.idea/
+.packages
+*.lock
