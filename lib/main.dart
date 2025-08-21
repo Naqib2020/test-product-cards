@@ -178,6 +178,7 @@ class _ProductShowcasePageState extends State<ProductShowcasePage> {
                 (p) => ProductCardHolographic(product: p),
                 (p) => ProductCardVintage(product: p),
                 (p) => ProductCardFuturistic(product: p),
+                (p) => ProductCardOriginal(product: p),
           ];
 
           return GridView.builder(
