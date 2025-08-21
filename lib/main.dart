@@ -18,13 +18,16 @@ class ProductShowcaseApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // MODIFIED: New brand color applied to the entire app theme.
+    const newBrandColor = Color(0xFFDBBD72);
+
     return MaterialApp(
       title: 'Product Card Showcase',
       theme: ThemeData(
-        primaryColor: const Color(0xFFFFCC00),
+        primaryColor: newBrandColor,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFFCC00),
-          primary: const Color(0xFFFFCC00),
+          seedColor: newBrandColor,
+          primary: newBrandColor,
           brightness: Brightness.light,
         ),
         useMaterial3: true,
@@ -332,7 +335,7 @@ class ProductCardFinal extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             _buildProductImage(),
-            _buildGradientOverlay(),
+            _buildGradientOverlay(context),
             _buildDiscountBadge(context),
             _buildFavoriteIcon(),
             _buildInfoOverlay(context),
@@ -351,8 +354,9 @@ class ProductCardFinal extends StatelessWidget {
     );
   }
 
-  Widget _buildGradientOverlay() {
-    const darkBrandColor = Color(0xFF665200);
+  Widget _buildGradientOverlay(BuildContext context) {
+    // MODIFIED: Using a dark, muted version of the new brand color.
+    const darkBrandColor = Color(0xFF5A4D2E);
 
     return Positioned.fill(
       child: DecoratedBox(
@@ -430,7 +434,7 @@ class ProductCardFinal extends StatelessWidget {
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 14, // Reduced font size
+                fontSize: 14,
                 shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
               ),
             ),
@@ -495,7 +499,6 @@ class ProductCardOriginal extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // MODIFIED: Wrapped the image in Expanded to fill space and remove whitespace.
             Expanded(
               child: _buildProductImage(context),
             ),
@@ -508,7 +511,6 @@ class ProductCardOriginal extends StatelessWidget {
 
   Widget _buildProductImage(BuildContext context) {
     return Stack(
-      // The fixed-height SizedBox was removed from here.
       children: [
         Positioned.fill(
           child: Image.network(
@@ -570,7 +572,6 @@ class ProductCardOriginal extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        // MODIFIED: Reduced spacing.
         const SizedBox(height: 4),
         _buildPriceFooter(context),
       ],
@@ -579,7 +580,6 @@ class ProductCardOriginal extends StatelessWidget {
 
   Widget _buildPriceFooter(BuildContext context) {
     return Container(
-      // MODIFIED: Padding reduced for a more compact footer.
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: Theme.of(context).primaryColor,
@@ -592,22 +592,19 @@ class ProductCardOriginal extends StatelessWidget {
               product: product,
               mainPriceColor: Colors.black,
               originalPriceColor: Colors.red[900]!,
-              // MODIFIED: Price font size reduced.
               mainPriceSize: 16,
             ),
           ),
           Container(
-            // MODIFIED: Padding reduced.
             padding: const EdgeInsets.all(3),
             decoration: const BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
             ),
-            child: Center(
+            child: const Center(
               child: Icon(
                 Icons.add,
                 color: Colors.black,
-                // MODIFIED: Icon size reduced.
                 size: 16,
               ),
             ),
@@ -1685,5 +1682,11 @@ class GridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    // TODO: implement shouldRepaint
+    throw UnimplementedError();
+  }
 }
