@@ -468,6 +468,150 @@ class ProductCardFinal extends StatelessWidget {
   }
 }
 
+
+// ====================================================================
+// DESIGN 1: The Final Creative Card
+// ====================================================================
+class ProductCardOriginal extends StatelessWidget {
+  final Product product;
+  const ProductCardOriginal({super.key, required this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12.0),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.07),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12.0),
+        child: Column(
+          // This ensures the card shrinks to its content's height
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildProductImage(context),
+            _buildProductInformation(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductImage(BuildContext context) {
+    return Stack(
+      children: [
+        SizedBox(
+          height: 140,
+          width: double.infinity,
+          child: Image.network(
+            product.imageUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) =>
+            const Icon(Icons.error, color: Colors.red),
+          ),
+        ),
+        if (product.discountPercentage != null)
+          Positioned(
+            top: 8,
+            left: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '-${product.discountPercentage!.toStringAsFixed(0)}%',
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ),
+        Positioned(
+          top: 4,
+          right: 4,
+          child: IconButton(
+            onPressed: () {},
+            icon: Icon(
+              Icons.favorite_border,
+              color: Colors.grey[800],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProductInformation(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10).copyWith(top: 8),
+          child: Text(
+            product.name,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _buildPriceFooter(context),
+      ],
+    );
+  }
+
+  Widget _buildPriceFooter(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).primaryColor,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Flexible(
+            child: PriceWidget(
+              product: product,
+              mainPriceColor: Colors.black, // Corrected for readability
+              originalPriceColor: Colors.red[900]!,
+              mainPriceSize: 20,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.add,
+                color: Colors.black,
+                size: 20,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 // ====================================================================
 // DESIGN 2: Neon Glow Card
 // ====================================================================
