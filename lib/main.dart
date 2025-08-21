@@ -57,7 +57,7 @@ class Product {
   });
 
   double? get discountPercentage {
-    if (originalPrice > 0) {
+    if (originalPrice > 0 && price < originalPrice) {
       return (1 - price / originalPrice) * 100;
     }
     return null;
@@ -90,7 +90,7 @@ class Product {
 class ProductService {
   static const String apiUrl = 'https://scanprox.de/scanprox/api/client/342/products_list';
 
-  Future<List<Product>> fetchProducts({int limit = 8}) async {
+  Future<List<Product>> fetchProducts({int limit = 9}) async {
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -139,7 +139,7 @@ class _ProductShowcasePageState extends State<ProductShowcasePage> {
   @override
   void initState() {
     super.initState();
-    _productsFuture = _productService.fetchProducts(limit: 8);
+    _productsFuture = _productService.fetchProducts(limit: 9);
   }
 
   @override
@@ -171,6 +171,7 @@ class _ProductShowcasePageState extends State<ProductShowcasePage> {
 
           final List<ProductCardBuilder> cardBuilders = [
                 (p) => ProductCardFinal(product: p),
+                (p) => ProductCardOriginal(product: p),
                 (p) => ProductCardNeon(product: p),
                 (p) => ProductCardDiagonal(product: p),
                 (p) => ProductCardInspired(product: p),
@@ -178,7 +179,6 @@ class _ProductShowcasePageState extends State<ProductShowcasePage> {
                 (p) => ProductCardHolographic(product: p),
                 (p) => ProductCardVintage(product: p),
                 (p) => ProductCardFuturistic(product: p),
-                (p) => ProductCardOriginal(product: p),
           ];
 
           return GridView.builder(
@@ -352,7 +352,6 @@ class ProductCardFinal extends StatelessWidget {
   }
 
   Widget _buildGradientOverlay() {
-    // MODIFIED: Using a dark, warm gold derived from the brand color for a premium feel.
     const darkBrandColor = Color(0xFF665200);
 
     return Positioned.fill(
@@ -374,7 +373,7 @@ class ProductCardFinal extends StatelessWidget {
   }
 
   Widget _buildDiscountBadge(BuildContext context) {
-    if (product.discountPercentage == null || product.discountPercentage! <= 0) {
+    if (product.discountPercentage == null) {
       return const SizedBox.shrink();
     }
     return Positioned(
@@ -471,7 +470,7 @@ class ProductCardFinal extends StatelessWidget {
 
 
 // ====================================================================
-// DESIGN 1: The Final Creative Card
+// The Original Card (RESTORED & IMPROVED)
 // ====================================================================
 class ProductCardOriginal extends StatelessWidget {
   final Product product;
@@ -494,11 +493,12 @@ class ProductCardOriginal extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12.0),
         child: Column(
-          // This ensures the card shrinks to its content's height
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildProductImage(context),
+            // MODIFIED: Wrapped the image in Expanded to fill space and remove whitespace.
+            Expanded(
+              child: _buildProductImage(context),
+            ),
             _buildProductInformation(context),
           ],
         ),
@@ -508,10 +508,9 @@ class ProductCardOriginal extends StatelessWidget {
 
   Widget _buildProductImage(BuildContext context) {
     return Stack(
+      // The fixed-height SizedBox was removed from here.
       children: [
-        SizedBox(
-          height: 140,
-          width: double.infinity,
+        Positioned.fill(
           child: Image.network(
             product.imageUrl,
             fit: BoxFit.cover,
@@ -565,13 +564,14 @@ class ProductCardOriginal extends StatelessWidget {
             product.name,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 15,
+              fontSize: 14,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        const SizedBox(height: 8),
+        // MODIFIED: Reduced spacing.
+        const SizedBox(height: 4),
         _buildPriceFooter(context),
       ],
     );
@@ -579,7 +579,8 @@ class ProductCardOriginal extends StatelessWidget {
 
   Widget _buildPriceFooter(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      // MODIFIED: Padding reduced for a more compact footer.
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: Theme.of(context).primaryColor,
       ),
@@ -589,22 +590,25 @@ class ProductCardOriginal extends StatelessWidget {
           Flexible(
             child: PriceWidget(
               product: product,
-              mainPriceColor: Colors.black, // Corrected for readability
+              mainPriceColor: Colors.black,
               originalPriceColor: Colors.red[900]!,
-              mainPriceSize: 20,
+              // MODIFIED: Price font size reduced.
+              mainPriceSize: 16,
             ),
           ),
           Container(
-            padding: const EdgeInsets.all(6),
+            // MODIFIED: Padding reduced.
+            padding: const EdgeInsets.all(3),
             decoration: const BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
             ),
-            child: const Center(
+            child: Center(
               child: Icon(
                 Icons.add,
                 color: Colors.black,
-                size: 20,
+                // MODIFIED: Icon size reduced.
+                size: 16,
               ),
             ),
           ),
