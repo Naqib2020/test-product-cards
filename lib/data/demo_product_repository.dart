@@ -1,0 +1,66 @@
+import 'package:product_card_atlas/models/product.dart';
+
+abstract final class DemoProductRepository {
+  static const List<Product> products = <Product>[
+    Product(
+      id: 'aero-headphones',
+      name: 'Aero Headphones',
+      category: 'Audio',
+      description: 'Quiet focus, sculpted in deep graphite.',
+      price: 189,
+      originalPrice: 239,
+      assetPath: 'assets/products/aero_headphones.png',
+      accentColor: 0xFFFF5A36,
+    ),
+    Product(
+      id: 'drift-watch',
+      name: 'Drift Watch',
+      category: 'Wearables',
+      description: 'A calm daily rhythm with essential metrics.',
+      price: 148,
+      originalPrice: 185,
+      assetPath: 'assets/products/drift_watch.png',
+      accentColor: 0xFF6C5CE7,
+    ),
+    Product(
+      id: 'fold-lamp',
+      name: 'Fold Lamp',
+      category: 'Desk',
+      description: 'Directional light with a compact footprint.',
+      price: 74,
+      originalPrice: 96,
+      assetPath: 'assets/products/fold_lamp.png',
+      accentColor: 0xFFF0B429,
+    ),
+    Product(
+      id: 'arc-speaker',
+      name: 'Arc Speaker',
+      category: 'Audio',
+      description: 'Room-filling sound in a tactile shell.',
+      price: 119,
+      originalPrice: 149,
+      assetPath: 'assets/products/arc_speaker.png',
+      accentColor: 0xFF00A884,
+    ),
+    Product(
+      id: 'field-camera',
+      name: 'Field Camera',
+      category: 'Imaging',
+      description: 'A pocket companion for deliberate frames.',
+      price: 649,
+      originalPrice: 749,
+      assetPath: 'assets/products/field_camera.png',
+      accentColor: 0xFF246BFD,
+    ),
+    Product(
+      id: 'notebook-set',
+      name: 'Grid Notebook Set',
+      category: 'Desk',
+      description: 'Three durable notebooks for ideas in motion.',
+      price: 24,
+      originalPrice: 30,
+      assetPath: 'assets/products/notebook_set.png',
+      accentColor: 0xFFD94B83,
+    ),
+  ];
+}

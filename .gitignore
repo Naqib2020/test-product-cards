@@ -1,0 +1,46 @@
+# Operating systems and editors
+.DS_Store
+Thumbs.db
+*.iml
+*.ipr
+*.iws
+*.log
+*.swp
+.idea/
+.vscode/
+
+# Dart and Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+key.properties
+android/local.properties
+
+# Platform build output
+android/app/debug/
+android/app/profile/
+android/app/release/
+ios/Pods/
+ios/.symlinks/
+macos/Pods/
+
+# Release artifacts
+*.apk
+*.aab
+*.ipa
+app.*.map.json
+app.*.symbols
